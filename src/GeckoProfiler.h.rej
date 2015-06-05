@@ -1,0 +1,22 @@
+--- GeckoProfiler.h
++++ GeckoProfiler.h
+@@ -196,16 +196,19 @@ static inline void profiler_sleep_end() 
+ // profiling on auxilerary threads.
+ static inline void profiler_js_operation_callback() {}
+ 
+ static inline double profiler_time() { return 0; }
+ static inline double profiler_time(const mozilla::TimeStamp& aTime) { return 0; }
+ 
+ static inline bool profiler_in_privacy_mode() { return false; }
+ 
++static inline void profiler_log(const char *str) {}
++static inline void profiler_log(const char *fmt, va_list args) {}
++
+ #else
+ 
+ #include "GeckoProfilerImpl.h"
+ 
+ #endif
+ 
+ class GeckoProfilerInitRAII {
+ public:

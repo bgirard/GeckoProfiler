@@ -1,0 +1,42 @@
+--- platform.cpp
++++ platform.cpp
+@@ -486,18 +486,18 @@ bool is_main_thread_name(const char* aNa
+ #ifdef HAVE_VA_COPY
+ #define VARARGS_ASSIGN(foo, bar)        VA_COPY(foo,bar)
+ #elif defined(HAVE_VA_LIST_AS_ARRAY)
+ #define VARARGS_ASSIGN(foo, bar)     foo[0] = bar[0]
+ #else
+ #define VARARGS_ASSIGN(foo, bar)     (foo) = (bar)
+ #endif
+ 
+-static void
+-profiler_log(const char *fmt, va_list args)
++void
++mozilla_sampler_log(const char *fmt, va_list args)
+ {
+   if (profiler_is_active()) {
+     // nsAutoCString AppendPrintf would be nicer but
+     // this is mozilla external code
+     char buf[2048];
+     va_list argsCpy;
+     VARARGS_ASSIGN(argsCpy, args);
+     int required = vsnprintf(buf, sizeof(buf), fmt, argsCpy);
+@@ -556,17 +556,17 @@ void mozilla_sampler_init(void* stackTop
+   // Read mode settings from MOZ_PROFILER_MODE and interval
+   // settings from MOZ_PROFILER_INTERVAL and stack-scan threshhold
+   // from MOZ_PROFILER_STACK_SCAN.
+   read_profiler_env_vars();
+ 
+   // platform specific initialization
+   OS::Startup();
+ 
+-  set_stderr_callback(profiler_log);
++  set_stderr_callback(mozilla_sampler_log);
+ 
+   // We can't open pref so we use an environment variable
+   // to know if we should trigger the profiler on startup
+   // NOTE: Default
+   const char *val = PR_GetEnv("MOZ_PROFILER_STARTUP");
+   if (!val || !*val) {
+     return;
+   }
