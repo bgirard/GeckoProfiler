@@ -26,7 +26,9 @@ For more details see: https://github.com/bgirard/cleopatra
 Running
 =======
 1) Run ./build.sh
+
 2) Run ./out/Default/hello_world
+
 3) Copy the JSON profile from stdout to: http://people.mozilla.org/~bgirard/cleopatra/
 
 Contributing

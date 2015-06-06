@@ -1,0 +1,10 @@
+notifications:
+  irc:
+    channels:
+      - "irc.mozilla.org#perf"
+    template:
+     - "BenWa: %{repository} (%{commit}) : %{message} %{build_url}"
+    on_success: change
+    on_failure: change
+
+script: ./build.sh
