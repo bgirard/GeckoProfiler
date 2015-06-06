@@ -26,5 +26,10 @@
           'XP_MACOSX',
         ],
       }],
+      ['OS=="linux"', {
+        'defines': [
+          'XP_LINUX',
+        ],
+      }],
     ],
 }

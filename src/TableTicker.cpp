@@ -79,10 +79,12 @@ pid_t gettid();
  #include "EHABIStackWalk.h"
 #endif
 
+#ifndef SPS_STANDALONE
 #if defined(SPS_PLAT_amd64_linux) || defined(SPS_PLAT_x86_linux)
 # define USE_LUL_STACKWALK
 # include "LulMain.h"
 # include "platform-linux-lul.h"
+#endif
 #endif
 
 using std::string;

@@ -63,19 +63,25 @@
 #include <strings.h>    // index
 #include <errno.h>
 #include <stdarg.h>
+#ifndef SPS_STANDALONE
 #include "prenv.h"
+#include "ThreadResponsiveness.h"
+#include "nsThreadUtils.h"
+#include "mozilla/Mutex.h"
+
+// Memory profile
+#include "nsMemoryReporterManager.h"
+#endif
 #include "platform.h"
 #include "GeckoProfiler.h"
-#include "mozilla/Mutex.h"
 #include "mozilla/Atomics.h"
 #include "mozilla/LinuxSignal.h"
 #include "mozilla/TimeStamp.h"
 #include "mozilla/DebugOnly.h"
 #include "ProfileEntry.h"
-#include "nsThreadUtils.h"
 #include "TableTicker.h"
-#include "ThreadResponsiveness.h"
 
+#ifndef SPS_STANDALONE
 #if defined(__ARM_EABI__) && defined(MOZ_WIDGET_GONK)
  // Should also work on other Android and ARM Linux, but not tested there yet.
 # define USE_EHABI_STACKWALK
@@ -85,9 +91,18 @@
 # include "LulMain.h"
 # include "platform-linux-lul.h"
 #endif
-
-// Memory profile
-#include "nsMemoryReporterManager.h"
+#else
+// We need a definition of gettid(), but glibc doesn't provide a
+// wrapper for it.
+#if defined(__GLIBC__)
+#include <unistd.h>
+#include <sys/syscall.h>
+static inline pid_t gettid()
+{
+  return (pid_t) syscall(SYS_gettid);
+}
+#endif
+#endif
 
 #include <string.h>
 #include <list>
@@ -260,13 +275,14 @@ void ProfilerSignalHandler(int signal, siginfo_t* info, void* context) {
 static void ProfilerSignalThread(ThreadProfile *profile,
                                  bool isFirstProfiledThread)
 {
+  profile->mRssMemory = 0;
+  profile->mUssMemory = 0;
+#ifndef SPS_STANDALONE
   if (isFirstProfiledThread && Sampler::GetActiveSampler()->ProfileMemory()) {
     profile->mRssMemory = nsMemoryReporterManager::ResidentFast();
     profile->mUssMemory = nsMemoryReporterManager::ResidentUnique();
-  } else {
-    profile->mRssMemory = 0;
-    profile->mUssMemory = 0;
   }
+#endif
 }
 
 int tgkill(pid_t tgid, pid_t tid, int signalno) {
@@ -320,7 +336,7 @@ static void* SignalSender(void* arg) {
     SamplerRegistry::sampler->DeleteExpiredMarkers();
 
     if (!SamplerRegistry::sampler->IsPaused()) {
-      mozilla::MutexAutoLock lock(*Sampler::sRegisteredThreadsMutex);
+      ::MutexAutoLock lock(*Sampler::sRegisteredThreadsMutex);
       std::vector<ThreadInfo*> threads =
         SamplerRegistry::sampler->GetRegisteredThreads();
 
@@ -338,7 +354,9 @@ static void* SignalSender(void* arg) {
           continue;
         }
 
+#ifndef SPS_STANDALONE
         info->Profile()->GetThreadResponsiveness()->Update();
+#endif
 
         // We use sCurrentThreadProfile the ThreadProfile for the
         // thread we're profiling to the signal handler
@@ -356,7 +374,6 @@ static void* SignalSender(void* arg) {
         // and needs to be precise too, such as the stack of the interrupted
         // thread.
         if (tgkill(vm_tgid_, threadId, SIGPROF) != 0) {
-          printf_stderr("profiler failed to signal tid=%d\n", threadId);
 #ifdef DEBUG
           abort();
 #endif
@@ -513,7 +530,7 @@ bool Sampler::RegisterCurrentThread(const char* aName,
   if (!Sampler::sRegisteredThreadsMutex)
     return false;
 
-  mozilla::MutexAutoLock lock(*Sampler::sRegisteredThreadsMutex);
+  ::MutexAutoLock lock(*Sampler::sRegisteredThreadsMutex);
 
   int id = gettid();
   for (uint32_t i = 0; i < sRegisteredThreads->size(); i++) {
@@ -561,7 +578,7 @@ void Sampler::UnregisterCurrentThread()
 
   tlsStackTop.set(nullptr);
 
-  mozilla::MutexAutoLock lock(*Sampler::sRegisteredThreadsMutex);
+  ::MutexAutoLock lock(*Sampler::sRegisteredThreadsMutex);
 
   int id = gettid();
 

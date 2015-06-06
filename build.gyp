@@ -35,6 +35,18 @@
               'third_party/mfbt/TimeStamp_darwin.cpp',
             ]
           }],
+          ['OS=="linux"', {
+            'sources': [
+              'src/platform-linux.cc',
+              'src/shared-libraries-linux.cc',
+              'third_party/mfbt/TimeStamp_posix.cpp',
+            ],
+            'link_settings': {
+              'libraries': [
+                '-lpthread',
+              ]
+            }
+          }],
         ],
       },{
         'target_name': 'hello_world',

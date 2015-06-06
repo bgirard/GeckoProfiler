@@ -15,7 +15,9 @@
 #include "platform.h"
 #include "shared-libraries.h"
 
+#ifndef SPS_STANDALONE
 #include "common/linux/file_id.h"
+#endif
 #include <algorithm>
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
@@ -23,6 +25,7 @@
 // Get the breakpad Id for the binary file pointed by bin_name
 static std::string getId(const char *bin_name)
 {
+#ifndef SPS_STANDALONE
   using namespace google_breakpad;
   using namespace std;
 
@@ -40,12 +43,15 @@ static std::string getId(const char *bin_name)
     return string(id_str, id_end) + '0';
   }
 
+#endif
   return "";
 }
 
 #if !defined(MOZ_WIDGET_GONK)
+#ifndef SPS_STANDALONE
 // TODO fix me with proper include
 #include "nsDebug.h"
+#endif
 #ifdef ANDROID
 #include "ElfLoader.h" // dl_phdr_info
 #else
