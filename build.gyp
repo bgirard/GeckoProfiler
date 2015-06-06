@@ -3,15 +3,10 @@
       {
         'target_name': 'GeckoProfiler',
         'type': '<(library)',
+        'includes': [
+          'common.gypi'
+        ],
         'dependencies': [
-        ],
-        'defines': [
-          'SPS_STANDALONE',
-          'MOZ_ENABLE_PROFILER_SPS',
-        ],
-        'include_dirs': [
-          'third_party/mfbt/include',
-          'third_party/spidermonkey/include',
         ],
         'sources': [
           'src/ProfileEntry.cpp',
@@ -32,25 +27,26 @@
           'third_party/mfbt/JSONWriter.cpp',
           'third_party/mfbt/TimeStamp.cpp',
         ],
-        'cflags': [
-          '-std=c++11',
-        ],
-        'xcode_settings': {
-          'OTHER_CFLAGS': [
-            '-std=c++11',
-          ],
-        },
         'conditions': [
           ['OS=="mac"', {
-            'defines': [
-              'XP_MACOSX',
-            ],
             'sources': [
               'src/platform-macos.cc',
               'src/shared-libraries-macos.cc',
               'third_party/mfbt/TimeStamp_darwin.cpp',
             ]
           }],
+        ],
+      },{
+        'target_name': 'hello_world',
+        'type': 'executable',
+        'dependencies': [
+          'GeckoProfiler'
+        ],
+        'includes': [
+          'common.gypi'
+        ],
+        'sources': [
+          'samples/hello_world.cpp',
         ],
       }
     ],

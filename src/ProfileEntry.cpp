@@ -919,12 +919,14 @@ void ThreadProfile::addStoredMarker(ProfilerMarker *aStoredMarker) {
 
 void ThreadProfile::StreamJSON(SpliceableJSONWriter& aWriter, float aSinceTime)
 {
-#ifndef SPS_STANDALONE
   // mUniqueStacks may already be emplaced from FlushSamplesAndMarkers.
   if (!mUniqueStacks.isSome()) {
+#ifndef SPS_STANDALONE
     mUniqueStacks.emplace(mPseudoStack->mRuntime);
-  }
+#else
+    mUniqueStacks.emplace(nullptr);
 #endif
+  }
 
   aWriter.Start(SpliceableJSONWriter::SingleLineStyle);
   {
@@ -1020,10 +1022,13 @@ void ThreadProfile::StreamSamplesAndMarkers(SpliceableJSONWriter& aWriter, float
         aWriter.Splice(mSavedStreamedSamples.get());
         mSavedStreamedSamples.reset();
       }
-#ifndef SPS_STANDALONE
       mBuffer->StreamSamplesToJSON(aWriter, mThreadId, aSinceTime,
-                                   mPseudoStack->mRuntime, aUniqueStacks);
+#ifndef SPS_STANDALONE
+                                   mPseudoStack->mRuntime,
+#else
+                                   nullptr,
 #endif
+                                   aUniqueStacks);
     }
     aWriter.EndArray();
   }
