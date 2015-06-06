@@ -508,12 +508,15 @@ void UniqueStacks::StreamStack(const StackKey& aStack)
 
 void UniqueStacks::StreamFrame(const OnStackFrameKey& aFrame)
 {
-#ifndef SPS_STANDALONE
   // Schema:
   //   [location, implementation, optimizations, line, category]
 
   mFrameTableWriter.StartArrayElement();
+#ifndef SPS_STANDALONE
   if (!aFrame.mJITFrameHandle) {
+#else
+  {
+#endif
     mUniqueStrings.WriteElement(mFrameTableWriter, aFrame.mLocation.c_str());
     if (aFrame.mLine.isSome()) {
       mFrameTableWriter.NullElement(); // implementation
@@ -526,7 +529,9 @@ void UniqueStacks::StreamFrame(const OnStackFrameKey& aFrame)
       }
       mFrameTableWriter.IntElement(*aFrame.mCategory);
     }
-  } else {
+  }
+#ifndef SPS_STANDALONE
+  else {
     const JS::ForEachProfiledFrameOp::FrameHandle& jitFrame = *aFrame.mJITFrameHandle;
 
     mUniqueStrings.WriteElement(mFrameTableWriter, jitFrame.label());
@@ -582,8 +587,8 @@ void UniqueStacks::StreamFrame(const OnStackFrameKey& aFrame)
       mFrameTableWriter.EndObject();
     }
   }
-  mFrameTableWriter.EndArray();
 #endif
+  mFrameTableWriter.EndArray();
 }
 
 struct ProfileSample
@@ -1059,7 +1064,6 @@ void ThreadProfile::StreamSamplesAndMarkers(SpliceableJSONWriter& aWriter, float
 
 void ThreadProfile::FlushSamplesAndMarkers()
 {
-#ifndef SPS_STANDALONE
   // This function is used to serialize the current buffer just before
   // JSRuntime destruction.
   MOZ_ASSERT(mPseudoStack->mRuntime);
@@ -1071,14 +1075,23 @@ void ThreadProfile::FlushSamplesAndMarkers()
   //
   // Note that the UniqueStacks instance is persisted so that the frame-index
   // mapping is stable across JS shutdown.
+#ifndef SPS_STANDALONE
   mUniqueStacks.emplace(mPseudoStack->mRuntime);
+#else
+  mUniqueStacks.emplace(nullptr);
+#endif
 
   {
     SpliceableChunkedJSONWriter b;
     b.StartBareList();
     {
       mBuffer->StreamSamplesToJSON(b, mThreadId, /* aSinceTime = */ 0,
-                                   mPseudoStack->mRuntime, *mUniqueStacks);
+#ifndef SPS_STANDALONE
+                                   mPseudoStack->mRuntime,
+#else
+                                   nullptr,
+#endif
+                                   *mUniqueStacks);
     }
     b.EndBareList();
     mSavedStreamedSamples = b.WriteFunc()->CopyData();
@@ -1093,7 +1106,6 @@ void ThreadProfile::FlushSamplesAndMarkers()
     b.EndBareList();
     mSavedStreamedMarkers = b.WriteFunc()->CopyData();
   }
-#endif
 
   // Reset the buffer. Attempting to symbolicate JS samples after mRuntime has
   // gone away will crash.
