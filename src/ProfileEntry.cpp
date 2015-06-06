@@ -331,6 +331,11 @@ uint32_t UniqueJSONStrings::GetOrAddIndex(const char* aStr)
   return index;
 }
 
+bool UniqueStacks::FrameKey::operator<(const FrameKey& aOther) const
+{
+ return Hash() < aOther.Hash();
+}
+
 bool UniqueStacks::FrameKey::operator==(const FrameKey& aOther) const
 {
   return mLocation == aOther.mLocation &&
@@ -338,6 +343,11 @@ bool UniqueStacks::FrameKey::operator==(const FrameKey& aOther) const
          mCategory == aOther.mCategory &&
          mJITAddress == aOther.mJITAddress &&
          mJITDepth == aOther.mJITDepth;
+}
+
+bool UniqueStacks::StackKey::operator<(const StackKey& aOther) const
+{
+ return Hash() < aOther.Hash();
 }
 
 bool UniqueStacks::StackKey::operator==(const StackKey& aOther) const
@@ -418,7 +428,7 @@ UniqueStacks::~UniqueStacks()
 uint32_t UniqueStacks::GetOrAddStackIndex(const StackKey& aStack)
 {
   uint32_t index;
-  auto it = mStackToIndexMap.find(aStack.Hash());
+  auto it = mStackToIndexMap.find(aStack);
 
   if (it != mStackToIndexMap.end()) {
     MOZ_ASSERT(index < mStackToIndexMap.Count());
@@ -426,7 +436,7 @@ uint32_t UniqueStacks::GetOrAddStackIndex(const StackKey& aStack)
   }
 
   index = mStackToIndexMap.size();
-  mStackToIndexMap[aStack.Hash()] = index;
+  mStackToIndexMap[aStack] = index;
   StreamStack(aStack);
   return index;
 }
@@ -434,7 +444,7 @@ uint32_t UniqueStacks::GetOrAddStackIndex(const StackKey& aStack)
 uint32_t UniqueStacks::GetOrAddFrameIndex(const OnStackFrameKey& aFrame)
 {
   uint32_t index;
-  auto it = mFrameToIndexMap.find(aFrame.Hash());
+  auto it = mFrameToIndexMap.find(aFrame);
   if (it != mFrameToIndexMap.end()) {
     MOZ_ASSERT(it->second < mFrameCount);
     return it->second;
@@ -456,7 +466,7 @@ uint32_t UniqueStacks::GetOrAddFrameIndex(const OnStackFrameKey& aFrame)
   // A manual count is used instead of mFrameToIndexMap.Count() due to
   // forwarding of canonical JIT frames above.
   index = mFrameCount++;
-  mFrameToIndexMap[aFrame.Hash()] = index;
+  mFrameToIndexMap[aFrame] = index;
   StreamFrame(aFrame);
   return index;
 }

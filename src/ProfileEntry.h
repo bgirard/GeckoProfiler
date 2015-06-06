@@ -142,6 +142,7 @@ public:
 
     uint32_t Hash() const;
     bool operator==(const FrameKey& aOther) const;
+    bool operator<(const FrameKey& aOther) const;
   };
 
   // A FrameKey that holds a scoped reference to a JIT FrameHandle.
@@ -187,6 +188,7 @@ public:
 
     uint32_t Hash() const;
     bool operator==(const StackKey& aOther) const;
+    bool operator<(const StackKey& aOther) const;
   };
 
   class Stack {
@@ -230,10 +232,10 @@ private:
 
   uint32_t mFrameCount;
   SpliceableChunkedJSONWriter mFrameTableWriter;
-  std::map<uint32_t, uint32_t> mFrameToIndexMap;
+  std::map<FrameKey, uint32_t> mFrameToIndexMap;
 
   SpliceableChunkedJSONWriter mStackTableWriter;
-  std::map<uint32_t, uint32_t> mStackToIndexMap;
+  std::map<StackKey, uint32_t> mStackToIndexMap;
 };
 
 class ProfileBuffer : public mozilla::RefCounted<ProfileBuffer> {
