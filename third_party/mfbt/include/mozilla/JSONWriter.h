@@ -99,6 +99,7 @@
 #include "mozilla/UniquePtr.h"
 #include "mozilla/Vector.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 
 namespace mozilla {
