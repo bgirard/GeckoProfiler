@@ -44,6 +44,7 @@
             'link_settings': {
               'libraries': [
                 '-lpthread',
+                '-lrt',
               ]
             }
           }],
