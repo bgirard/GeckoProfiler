@@ -1,16 +1,13 @@
 #include "GeckoProfiler.h"
 
-#include <chrono>
-#include <thread>
-
-void longSleep() {
-  PROFILER_LABEL("Sampe", "twoSecondSleep", js::ProfileEntry::Category::OTHER);
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+void longCalc() {
+  PROFILER_LABEL("Sampe", "longCalc", js::ProfileEntry::Category::OTHER);
+  for (int i = 0; i < 1000000000; i++) {}
 }
 
-void tinySleep() {
-  PROFILER_LABEL("Sampe", "tinySleep", js::ProfileEntry::Category::OTHER);
-  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+void tinyCalc() {
+  PROFILER_LABEL("Sampe", "tinyCalc", js::ProfileEntry::Category::OTHER);
+  for (int i = 0; i < 100000000; i++) {}
 }
 
 int main() {
@@ -24,11 +21,11 @@ int main() {
   profiler_start(100000, 10, nullptr, 0, nullptr, 0);
 
   {
-    PROFILER_LABEL("Sample", "BeforeLongSleep", js::ProfileEntry::Category::OTHER);
-    longSleep();
+    PROFILER_LABEL("Sample", "BeforeLongCalc", js::ProfileEntry::Category::OTHER);
+    longCalc();
   }
 
-  tinySleep();
+  tinyCalc();
 
   PROFILER_LABEL("Sample", "After", js::ProfileEntry::Category::OTHER);
 
