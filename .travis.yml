@@ -2,6 +2,7 @@ language: cpp
 
 compiler:
   - clang
+  - gcc
 
 before_install:
   - sudo add-apt-repository -y ppa:saiarcot895/chromium-beta
