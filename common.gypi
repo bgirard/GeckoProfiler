@@ -29,7 +29,7 @@
       ['OS=="linux"', {
         'defines': [
           'XP_LINUX',
-          'PRId64=l64d'
+          'PRId64="l64d"'
         ],
       }],
     ],
