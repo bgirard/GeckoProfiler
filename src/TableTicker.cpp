@@ -55,9 +55,6 @@
 #if defined(MOZ_PROFILING) && (defined(XP_MACOSX) || defined(XP_WIN))
  #define USE_NS_STACKWALK
 #endif
-#ifdef USE_NS_STACKWALK
- #include "nsStackWalk.h"
-#endif
 
 #if defined(XP_WIN)
 typedef CONTEXT tickcontext_t;
@@ -818,7 +815,7 @@ void TableTicker::doNativeBacktrace(ThreadProfile &aProfile, TickSample* aSample
   };
 
   // Start with the current function. We use 0 as the frame number here because
-  // the FramePointerStackWalk() and NS_StackWalk() calls below will use 1..N.
+  // the MozFramePointerStackWalk() and MozStackWalk() calls below will use 1..N.
   // This is a bit weird but it doesn't matter because StackWalkCallback()
   // doesn't use the frame number argument.
   StackWalkCallback(/* frameNumber */ 0, aSample->pc, aSample->sp, &nativeStack);
@@ -831,21 +828,21 @@ void TableTicker::doNativeBacktrace(ThreadProfile &aProfile, TickSample* aSample
     stackEnd = static_cast<char*>(pthread_get_stackaddr_np(pt));
   bool rv = true;
   if (aSample->fp >= aSample->sp && aSample->fp <= stackEnd)
-    rv = FramePointerStackWalk(StackWalkCallback, /* skipFrames */ 0,
+    rv = MozFramePointerStackWalk(StackWalkCallback, /* skipFrames */ 0,
                                maxFrames, &nativeStack,
                                reinterpret_cast<void**>(aSample->fp), stackEnd);
 #else
   void *platformData = nullptr;
 #ifdef XP_WIN
   if (aSample->isSamplingCurrentThread) {
-    // In this case we want NS_StackWalk to know that it's walking the
+    // In this case we want MozStackWalk to know that it's walking the
     // current thread's stack, so we pass 0 as the thread handle.
     thread = 0;
   }
   platformData = aSample->context;
 #endif // XP_WIN
 
-  bool rv = NS_StackWalk(StackWalkCallback, /* skipFrames */ 0, maxFrames,
+  bool rv = MozStackWalk(StackWalkCallback, /* skipFrames */ 0, maxFrames,
                              &nativeStack, thread, platformData);
 #endif
   if (rv)

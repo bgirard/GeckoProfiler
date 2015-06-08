@@ -431,7 +431,6 @@ uint32_t UniqueStacks::GetOrAddStackIndex(const StackKey& aStack)
   auto it = mStackToIndexMap.find(aStack);
 
   if (it != mStackToIndexMap.end()) {
-    MOZ_ASSERT(index < mStackToIndexMap.Count());
     return it->second;
   }
 
@@ -457,7 +456,7 @@ uint32_t UniqueStacks::GetOrAddFrameIndex(const OnStackFrameKey& aFrame)
     if (canonicalAddr != *aFrame.mJITAddress) {
       OnStackFrameKey canonicalKey(canonicalAddr, *aFrame.mJITDepth, *aFrame.mJITFrameHandle);
       uint32_t canonicalIndex = GetOrAddFrameIndex(canonicalKey);
-      mFrameToIndexMap[aFrame.Hash()] = canonicalIndex;
+      mFrameToIndexMap[aFrame] = canonicalIndex;
       return canonicalIndex;
     }
   }

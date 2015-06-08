@@ -240,10 +240,11 @@ private:
 
 class ProfileBuffer : public mozilla::RefCounted<ProfileBuffer> {
 public:
+  MOZ_DECLARE_REFCOUNTED_VIRTUAL_TYPENAME(ProfileBuffer)
 
   explicit ProfileBuffer(int aEntrySize);
 
-  ~ProfileBuffer();
+  virtual ~ProfileBuffer();
 
   void addTag(const ProfileEntry& aTag);
   void StreamSamplesToJSON(SpliceableJSONWriter& aWriter, int aThreadId, float aSinceTime,

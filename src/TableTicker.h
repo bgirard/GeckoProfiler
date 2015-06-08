@@ -8,7 +8,6 @@
 
 #include "platform.h"
 #include "ProfileEntry.h"
-//#include "mozilla/Mutex.h"
 #include "mozilla/Vector.h"
 #ifndef SPS_STANDALONE
 #include "IntelPowerGadget.h"
