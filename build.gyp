@@ -1,8 +1,8 @@
   {
     'targets': [
       {
-        'target_name': 'GeckoProfiler',
-        'type': '<(library)',
+        'target_name': 'GeckoProfilerStatic',
+        'type': 'static_library',
         'includes': [
           'common.gypi'
         ],
@@ -48,6 +48,18 @@
               ]
             }
           }],
+        ],
+      },{
+        'target_name': 'GeckoProfiler',
+        'type': 'shared_library',
+        'includes': [
+          'common.gypi'
+        ],
+        'dependencies': [
+          'GeckoProfilerStatic'
+        ],
+        'sources': [
+          'src/standalone/constructor.cpp',
         ],
       },{
         'target_name': 'hello_world',

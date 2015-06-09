@@ -2,5 +2,5 @@
 
 set -e
 
-./gyp/gyp build.gyp -Dlibrary=static_library --depth=. -f ninja
+./gyp/gyp build.gyp --depth=. -f ninja
 ninja -C out/Default
