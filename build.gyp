@@ -31,6 +31,7 @@
           ['OS=="mac"', {
             'defines': [
               'HAVE_DLADDR',
+              'MOZ_PROFILING',
             ],
             'sources': [
               'src/platform-macos.cc',

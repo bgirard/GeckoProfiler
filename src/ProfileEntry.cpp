@@ -768,7 +768,7 @@ void ProfileBuffer::StreamSamplesToJSON(SpliceableJSONWriter& aWriter, int aThre
               // extend 32-bit addresses starting with 0xFXXXXXX.
               unsigned long long pc = (unsigned long long)(uintptr_t)frame.mTagPtr;
 
-#ifdef SPS_STANDALONE
+#if defined(SPS_STANDALONE) && defined(MOZ_PROFILING)
               MozCodeAddressDetails details;
               if (MozDescribeCodeAddress((void*)pc, &details)) {
                 stack.AppendFrame(UniqueStacks::OnStackFrameKey(details.function));
