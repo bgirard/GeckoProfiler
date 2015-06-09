@@ -25,6 +25,8 @@
       ['OS=="mac"', {
         'defines': [
           'XP_MACOSX',
+          'MOZ_PROFILING',
+          'HAVE__UNWIND_BACKTRACE',
         ],
       }],
       ['OS=="linux"', {

@@ -29,10 +29,14 @@
         ],
         'conditions': [
           ['OS=="mac"', {
+            'defines': [
+              'HAVE_DLADDR',
+            ],
             'sources': [
               'src/platform-macos.cc',
               'src/shared-libraries-macos.cc',
               'third_party/mfbt/TimeStamp_darwin.cpp',
+              'third_party/mfbt/StackWalk.cpp',
             ]
           }],
           ['OS=="linux"', {

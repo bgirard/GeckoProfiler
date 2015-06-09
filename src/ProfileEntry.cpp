@@ -5,6 +5,7 @@
 
 #include <ostream>
 #include "platform.h"
+#include "mozilla/StackWalk.h"
 #include "mozilla/HashFunctions.h"
 
 #ifndef SPS_STANDALONE
@@ -766,9 +767,19 @@ void ProfileBuffer::StreamSamplesToJSON(SpliceableJSONWriter& aWriter, int aThre
               // We need a double cast here to tell GCC that we don't want to sign
               // extend 32-bit addresses starting with 0xFXXXXXX.
               unsigned long long pc = (unsigned long long)(uintptr_t)frame.mTagPtr;
-              snprintf(tagBuff.get(), DYNAMIC_MAX_STRING, "%#llx", pc);
-              stack.AppendFrame(UniqueStacks::OnStackFrameKey(tagBuff.get()));
+
+#ifdef SPS_STANDALONE
+              MozCodeAddressDetails details;
+              if (MozDescribeCodeAddress((void*)pc, &details)) {
+                stack.AppendFrame(UniqueStacks::OnStackFrameKey(details.function));
+              } else
+#endif
+              {
+                snprintf(tagBuff.get(), DYNAMIC_MAX_STRING, "%#llx", pc);
+                stack.AppendFrame(UniqueStacks::OnStackFrameKey(tagBuff.get()));
+              }
             } else if (frame.mTagName == 'c') {
+              tagStringData = "test";
               UniqueStacks::OnStackFrameKey frameKey(tagStringData);
               readAheadPos = (framePos + incBy) % mEntrySize;
               if (readAheadPos != mWritePos &&

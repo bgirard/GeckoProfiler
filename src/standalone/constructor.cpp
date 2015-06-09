@@ -14,7 +14,10 @@ __attribute__((constructor)) static void standalone_init() {
   int a;
   profiler_init(&a);
 
-  profiler_start(100000, 10, nullptr, 0, nullptr, 0);
+  int profileSize = 100000;
+  int profileInterval = 10;
+  const char* features[] = {"stackwalk"};
+  profiler_start(profileSize, profileInterval, features, MOZ_ARRAY_LENGTH(features), nullptr, 0);
 
   atexit(shutdown);
 }
