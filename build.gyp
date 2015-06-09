@@ -32,6 +32,7 @@
             'defines': [
               'HAVE_DLADDR',
               'MOZ_PROFILING',
+              'MOZ_DEMANGLE_SYMBOLS',
             ],
             'sources': [
               'src/platform-macos.cc',
