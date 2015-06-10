@@ -40,6 +40,9 @@
 #include "mozilla/Services.h"
 #include "PlatformMacros.h"
 #include "nsTArray.h"
+#else
+#include <chrono>
+using namespace std::chrono;
 #endif
 
 #if defined(SPS_OS_android) && !defined(MOZ_WIDGET_GONK)
@@ -224,10 +227,15 @@ void TableTicker::StreamMetaJSCustomObject(SpliceableJSONWriter& aWriter)
   aWriter.DoubleProperty("interval", interval());
   aWriter.IntProperty("stackwalk", mUseStackWalk);
 
-#ifndef SPS_STANDALONE
+#ifdef SPS_STANDALONE
+  double startTime = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+#else
   mozilla::TimeDuration delta = mozilla::TimeStamp::Now() - sStartTime;
-  aWriter.DoubleProperty("startTime", static_cast<double>(PR_Now()/1000.0 - delta.ToMilliseconds()));
+  double startTime = static_cast<double>(PR_Now()/1000.0 - delta.ToMilliseconds());
+#endif
+  aWriter.DoubleProperty("startTime", startTime);
 
+#ifndef SPS_STANDALONE
   aWriter.IntProperty("processType", XRE_GetProcessType());
 
   nsresult res;
