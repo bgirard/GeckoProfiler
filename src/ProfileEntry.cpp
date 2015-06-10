@@ -681,6 +681,7 @@ void ProfileBuffer::StreamSamplesToJSON(SpliceableJSONWriter& aWriter, int aThre
   int currentThreadID = -1;
   Maybe<float> currentTime;
   UniquePtr<char[]> tagBuff = MakeUnique<char[]>(DYNAMIC_MAX_STRING);
+  std::map<void*, std::string> symCache;
 
   while (readPos != mWritePos) {
     ProfileEntry entry = mEntries[readPos];
@@ -769,9 +770,14 @@ void ProfileBuffer::StreamSamplesToJSON(SpliceableJSONWriter& aWriter, int aThre
               unsigned long long pc = (unsigned long long)(uintptr_t)frame.mTagPtr;
 
 #if defined(SPS_STANDALONE) && defined(MOZ_PROFILING)
+              void* pcPtr = (void*)pc;
               MozCodeAddressDetails details;
-              if (MozDescribeCodeAddress((void*)pc, &details)) {
+              auto symCacheIt = symCache.find(pcPtr);
+              if (symCacheIt != symCache.end()) {
+                stack.AppendFrame(UniqueStacks::OnStackFrameKey(symCacheIt->second.c_str()));
+              } else if (MozDescribeCodeAddress(pcPtr, &details)) {
                 stack.AppendFrame(UniqueStacks::OnStackFrameKey(details.function));
+                symCache[pcPtr] = details.function;
               } else
 #endif
               {
