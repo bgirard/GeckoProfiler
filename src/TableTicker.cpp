@@ -228,7 +228,9 @@ void TableTicker::StreamMetaJSCustomObject(SpliceableJSONWriter& aWriter)
   aWriter.IntProperty("stackwalk", mUseStackWalk);
 
 #ifdef SPS_STANDALONE
-  double startTime = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  double epocMilli = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  mozilla::TimeDuration delta = mozilla::TimeStamp::Now() - sStartTime;
+  double startTime = static_cast<double>(epocMilli - delta.ToMilliseconds());
 #else
   mozilla::TimeDuration delta = mozilla::TimeStamp::Now() - sStartTime;
   double startTime = static_cast<double>(PR_Now()/1000.0 - delta.ToMilliseconds());
@@ -1198,3 +1200,4 @@ TableTicker::GetBufferInfo(uint32_t *aCurrentPosition, uint32_t *aTotalSize, uin
   *aTotalSize = mBuffer->mEntrySize;
   *aGeneration = mBuffer->mGeneration;
 }
+

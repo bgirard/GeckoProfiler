@@ -588,7 +588,7 @@ void mozilla_sampler_save()
 
 mozilla::UniquePtr<char[]> mozilla_sampler_get_profile(float aSinceTime)
 {
-  TableTicker *t = tlsTicker.get();
+  TableTicker *t = Sampler::GetActiveSampler();
   if (!t) {
     return nullptr;
   }
@@ -599,7 +599,7 @@ mozilla::UniquePtr<char[]> mozilla_sampler_get_profile(float aSinceTime)
 #ifndef SPS_STANDALONE
 JSObject *mozilla_sampler_get_profile_data(JSContext *aCx, float aSinceTime)
 {
-  TableTicker *t = tlsTicker.get();
+  TableTicker *t = Sampler::GetActiveSampler();
   if (!t) {
     return nullptr;
   }
@@ -610,7 +610,7 @@ JSObject *mozilla_sampler_get_profile_data(JSContext *aCx, float aSinceTime)
 
 void mozilla_sampler_save_profile_to_file(const char* aFilename)
 {
-  TableTicker *t = tlsTicker.get();
+  TableTicker *t = Sampler::GetActiveSampler();
   if (!t) {
     return;
   }
