@@ -15,20 +15,20 @@
 #include "mozilla/RefPtr.h"
 #include <string>
 #include <map>
-//#include "nsHashKeys.h"
-//#include "nsDataHashtable.h"
 #ifndef SPS_STANDALONE
 #include "js/ProfilingFrameIterator.h"
 #include "js/TrackedOptimizationInfo.h"
+#include "nsHashKeys.h"
+#include "nsDataHashtable.h"
 #endif
 #include "mozilla/Maybe.h"
-//#include "mozilla/Mutex.h"
 #include "mozilla/Vector.h"
 #ifndef SPS_STANDALONE
 #include "gtest/MozGtestFriend.h"
 #else
 #define FRIEND_TEST(a, b) // TODO Support standalone gtest
 #endif
+#include "mozilla/HashFunctions.h"
 #include "mozilla/UniquePtr.h"
 
 class ThreadProfile;
@@ -90,12 +90,8 @@ public:
     mStringTableWriter.StartBareList();
   }
 
-  ~UniqueJSONStrings() {
-    mStringTableWriter.EndBareList();
-  }
-
-  void SpliceStringTableElements(SpliceableJSONWriter& aWriter) const {
-    aWriter.Splice(mStringTableWriter.WriteFunc());
+  void SpliceStringTableElements(SpliceableJSONWriter& aWriter) {
+    aWriter.TakeAndSplice(mStringTableWriter.WriteFunc());
   }
 
   void WriteProperty(mozilla::JSONWriter& aWriter, const char* aName, const char* aStr) {
@@ -108,9 +104,39 @@ public:
 
   uint32_t GetOrAddIndex(const char* aStr);
 
+  struct StringKey {
+
+    explicit StringKey(const char* aStr)
+     : mStr(strdup(aStr))
+    {
+      mHash = mozilla::HashString(mStr);
+    }
+
+    StringKey(const StringKey& aOther)
+      : mStr(strdup(aOther.mStr))
+    {
+      mHash = aOther.mHash;
+    }
+
+    ~StringKey() {
+      free(mStr);
+    }
+
+    uint32_t Hash() const;
+    bool operator==(const StringKey& aOther) const {
+      return strcmp(mStr, aOther.mStr) == 0;
+    }
+    bool operator<(const StringKey& aOther) const {
+      return mHash < aOther.mHash;
+    }
+
+  private:
+    uint32_t mHash;
+    char* mStr;
+  };
 private:
   SpliceableChunkedJSONWriter mStringTableWriter;
-  std::map<std::string, uint32_t> mStringToIndexMap;
+  std::map<StringKey, uint32_t> mStringToIndexMap;
 };
 
 class UniqueStacks
@@ -125,7 +151,9 @@ public:
 
     explicit FrameKey(const char* aLocation)
      : mLocation(aLocation)
-    { }
+    {
+      mHash = Hash();
+    }
 
     FrameKey(const FrameKey& aToCopy)
      : mLocation(aToCopy.mLocation)
@@ -133,16 +161,25 @@ public:
      , mCategory(aToCopy.mCategory)
      , mJITAddress(aToCopy.mJITAddress)
      , mJITDepth(aToCopy.mJITDepth)
-    { }
+    {
+      mHash = Hash();
+    }
 
     FrameKey(void* aJITAddress, uint32_t aJITDepth)
      : mJITAddress(mozilla::Some(aJITAddress))
      , mJITDepth(mozilla::Some(aJITDepth))
-    { }
+    {
+      mHash = Hash();
+    }
 
     uint32_t Hash() const;
     bool operator==(const FrameKey& aOther) const;
-    bool operator<(const FrameKey& aOther) const;
+    bool operator<(const FrameKey& aOther) const {
+      return mHash < aOther.mHash;
+    }
+
+  private:
+    uint32_t mHash;
   };
 
   // A FrameKey that holds a scoped reference to a JIT FrameHandle.
@@ -184,11 +221,25 @@ public:
 
     explicit StackKey(uint32_t aFrame)
      : mFrame(aFrame)
-    { }
+    {
+      mHash = Hash();
+    }
 
     uint32_t Hash() const;
     bool operator==(const StackKey& aOther) const;
-    bool operator<(const StackKey& aOther) const;
+    bool operator<(const StackKey& aOther) const {
+      return mHash < aOther.mHash;
+    }
+
+    void UpdateHash(uint32_t aPrefixHash, uint32_t aPrefix, uint32_t aFrame) {
+      mPrefixHash = mozilla::Some(aPrefixHash);
+      mPrefix = mozilla::Some(aPrefix);
+      mFrame = aFrame;
+      mHash = Hash();
+    }
+
+  private:
+    uint32_t mHash;
   };
 
   class Stack {
@@ -204,13 +255,12 @@ public:
   };
 
   explicit UniqueStacks(JSRuntime* aRuntime);
-  ~UniqueStacks();
 
   Stack BeginStack(const OnStackFrameKey& aRoot);
   uint32_t LookupJITFrameDepth(void* aAddr);
   void AddJITFrameDepth(void* aAddr, unsigned depth);
-  void SpliceFrameTableElements(SpliceableJSONWriter& aWriter) const;
-  void SpliceStackTableElements(SpliceableJSONWriter& aWriter) const;
+  void SpliceFrameTableElements(SpliceableJSONWriter& aWriter);
+  void SpliceStackTableElements(SpliceableJSONWriter& aWriter);
 
 private:
   uint32_t GetOrAddFrameIndex(const OnStackFrameKey& aFrame);
@@ -232,10 +282,22 @@ private:
 
   uint32_t mFrameCount;
   SpliceableChunkedJSONWriter mFrameTableWriter;
+#ifdef SPS_STANDALONE
   std::map<FrameKey, uint32_t> mFrameToIndexMap;
+#else
+  nsDataHashtable<nsGenericHashKey<FrameKey>, uint32_t> mFrameToIndexMap;
+#endif
 
   SpliceableChunkedJSONWriter mStackTableWriter;
+
+  // This sucks but this is really performance critical, nsDataHashtable is way faster
+  // than map/unordered_map but nsDataHashtable is tied to xpcom so we ifdef
+  // until we can find a better solution.
+#ifdef SPS_STANDALONE
   std::map<StackKey, uint32_t> mStackToIndexMap;
+#else
+  nsDataHashtable<nsGenericHashKey<StackKey>, uint32_t> mStackToIndexMap;
+#endif
 };
 
 class ProfileBuffer : public mozilla::RefCounted<ProfileBuffer> {

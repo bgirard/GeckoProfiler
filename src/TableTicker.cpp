@@ -236,6 +236,9 @@ void TableTicker::StreamMetaJSCustomObject(SpliceableJSONWriter& aWriter)
   aWriter.DoubleProperty("startTime", startTime);
 
 #ifndef SPS_STANDALONE
+  mozilla::TimeDuration delta = mozilla::TimeStamp::Now() - sStartTime;
+  aWriter.DoubleProperty("startTime", static_cast<double>(PR_Now()/1000.0 - delta.ToMilliseconds()));
+
   aWriter.IntProperty("processType", XRE_GetProcessType());
 
   nsresult res;
@@ -293,8 +296,33 @@ JSObject* TableTicker::ToJSObject(JSContext *aCx, float aSinceTime)
   {
     UniquePtr<char[]> buf = ToJSON(aSinceTime);
     NS_ConvertUTF8toUTF16 js_string(nsDependentCString(buf.get()));
-    MOZ_ALWAYS_TRUE(JS_ParseJSON(aCx, static_cast<const char16_t*>(js_string.get()),
-                                 js_string.Length(), &val));
+    bool rv = JS_ParseJSON(aCx, static_cast<const char16_t*>(js_string.get()),
+                           js_string.Length(), &val);
+    if (!rv) {
+#ifdef NIGHTLY_BUILD
+      // XXXshu: Temporary code to help debug malformed JSON. See bug 1172157.
+      nsCOMPtr<nsIFile> path;
+      nsresult rv = NS_GetSpecialDirectory("TmpD", getter_AddRefs(path));
+      if (!NS_FAILED(rv)) {
+        rv = path->Append(NS_LITERAL_STRING("bad-profile.json"));
+        if (!NS_FAILED(rv)) {
+          nsCString cpath;
+          rv = path->GetNativePath(cpath);
+          if (!NS_FAILED(rv)) {
+            std::ofstream stream;
+            stream.open(cpath.get());
+            if (stream.is_open()) {
+              stream << buf.get();
+              stream.close();
+              printf_stderr("Malformed profiler JSON dumped to %s! "
+                            "Please upload to https://bugzil.la/1172157\n",
+                            cpath.get());
+            }
+          }
+        }
+      }
+#endif
+    }
   }
   return &val.toObject();
 }

@@ -1087,7 +1087,7 @@ void mozilla_sampler_add_marker(const char *aMarker, ProfilerMarkerPayload *aPay
 
 class GeckoMutex : public ::Mutex {
  public:
-  GeckoMutex(const char* aDesc) :
+  explicit GeckoMutex(const char* aDesc) :
     mMutex(aDesc)
   {}
 

@@ -5,6 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 mfbt_src_lcppsrcs = [
+    'ChaosMode.cpp',
     'double-conversion/bignum-dtoa.cc',
     'double-conversion/bignum.cc',
     'double-conversion/cached-powers.cc',
@@ -19,25 +20,6 @@ mfbt_src_lcppsrcs = [
     'Poison.cpp',
     'SHA1.cpp',
     'TaggedAnonymousMemory.cpp',
-    'TimeStamp.cpp',
-]
-
-if CONFIG['OS_ARCH'] == 'WINNT':
-    mfbt_src_lcppsrcs += [
-        'TimeStamp_windows.cpp',
-    ]
-elif CONFIG['HAVE_CLOCK_MONOTONIC']:
-    mfbt_src_lcppsrcs += [
-        'TimeStamp_posix.cpp',
-    ]
-elif CONFIG['OS_ARCH'] == 'Darwin':
-    mfbt_src_lcppsrcs += [
-        'TimeStamp_darwin.cpp',
-    ]
-elif CONFIG['COMPILE_ENVIRONMENT']:
-    error('No TimeStamp implementation on this platform.  Build will not succeed')
-
-mfbt_src_lcppsrcs += [
     'unused.cpp',
 ]
 

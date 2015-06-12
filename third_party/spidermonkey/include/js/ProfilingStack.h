@@ -7,21 +7,16 @@
 #ifndef js_ProfilingStack_h
 #define js_ProfilingStack_h
 
-#ifdef GECKO_BUILD
+#ifndef SPS_STANDALONE
 #include "jsbytecode.h"
+#include "js/TypeDecls.h"
 #include "jstypes.h"
-
 #include "js/Utility.h"
 #endif
 
 struct JSRuntime;
 
 namespace js {
-
-#ifndef GECKO_BUILD
-//class jsbytecode;
-//class JSScript;
-#endif
 
 // A call stack can be specified to the JS engine such that all JS entry/exits
 // to functions push/pop an entry to/from the specified stack.
@@ -106,6 +101,12 @@ class ProfileEntry
     void setLabel(const char* aString) volatile { string = aString; }
     const char* label() const volatile { return string; }
 
+    void setCppFrame(void* aSp, uint32_t aLine) volatile {
+        flags_ = IS_CPP_ENTRY;
+        spOrScript = aSp;
+        lineOrPc = static_cast<int32_t>(aLine);
+    }
+
     void setFlag(uint32_t flag) volatile {
         MOZ_ASSERT(flag != IS_CPP_ENTRY);
         flags_ |= flag;
@@ -121,25 +122,21 @@ class ProfileEntry
     uint32_t flags() const volatile {
         return flags_;
     }
+
     uint32_t category() const volatile {
         return flags_ & CATEGORY_MASK;
     }
 
-    void setCppFrame(void* aSp, uint32_t aLine) volatile {
-        flags_ = IS_CPP_ENTRY;
-        spOrScript = aSp;
-        lineOrPc = static_cast<int32_t>(aLine);
+    uint32_t line() const volatile {
+        MOZ_ASSERT(!isJs());
+        return static_cast<uint32_t>(lineOrPc);
     }
 
     void* stackAddress() const volatile {
         MOZ_ASSERT(!isJs());
         return spOrScript;
     }
-    uint32_t line() const volatile {
-        MOZ_ASSERT(!isJs());
-        return static_cast<uint32_t>(lineOrPc);
-    }
-#ifdef GECKO_BUILD
+#ifndef SPS_STANDALONE
     void setJsFrame(JSScript* aScript, jsbytecode* aPc) volatile {
         flags_ = 0;
         spOrScript = aScript;
@@ -162,10 +159,10 @@ class ProfileEntry
         MOZ_ASSERT(isJs());
         return (JSScript*)spOrScript;
     }
-
     // We can't know the layout of JSScript, so look in vm/SPSProfiler.cpp.
     JS_FRIEND_API(jsbytecode*) pc() const volatile;
     JS_FRIEND_API(void) setPC(jsbytecode* pc) volatile;
+#endif
 
     // The offset of a pc into a script's code can actually be 0, so to
     // signify a nullptr pc, use a -1 index. This is checked against in
@@ -176,10 +173,9 @@ class ProfileEntry
     static size_t offsetOfSpOrScript() { return offsetof(ProfileEntry, spOrScript); }
     static size_t offsetOfLineOrPc() { return offsetof(ProfileEntry, lineOrPc); }
     static size_t offsetOfFlags() { return offsetof(ProfileEntry, flags_); }
-#endif
 };
 
-#ifdef GECKO_BUILD
+#ifndef SPS_STANDALONE
 JS_FRIEND_API(void)
 SetRuntimeProfilingStack(JSRuntime* rt, ProfileEntry* stack, uint32_t* size,
                          uint32_t max);

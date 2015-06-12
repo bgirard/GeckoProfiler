@@ -122,7 +122,7 @@ class Mutex {
 
 class MutexAutoLock {
  public:
-  MutexAutoLock(Mutex& aMutex)
+  explicit MutexAutoLock(::Mutex& aMutex)
     : mMutex(&aMutex)
   {
     mMutex->Lock();

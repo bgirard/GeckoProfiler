@@ -80,7 +80,6 @@ EXPORTS.mozilla = [
     'TaggedAnonymousMemory.h',
     'TemplateLib.h',
     'ThreadLocal.h',
-    'TimeStamp.h',
     'ToString.h',
     'Tuple.h',
     'TypedEnumBits.h',
@@ -94,7 +93,6 @@ EXPORTS.mozilla = [
 
 if CONFIG['OS_ARCH'] == 'WINNT':
     EXPORTS.mozilla += [
-        'TimeStamp_windows.h',
         'WindowsVersion.h',
     ]
 elif CONFIG['OS_ARCH'] == 'Linux':

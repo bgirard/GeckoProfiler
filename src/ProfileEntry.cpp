@@ -5,7 +5,6 @@
 
 #include <ostream>
 #include "platform.h"
-#include "mozilla/StackWalk.h"
 #include "mozilla/HashFunctions.h"
 
 #ifndef SPS_STANDALONE
@@ -319,7 +318,7 @@ public:
 uint32_t UniqueJSONStrings::GetOrAddIndex(const char* aStr)
 {
   uint32_t index;
-  std::string key(aStr);
+  StringKey key(aStr);
 
   auto it = mStringToIndexMap.find(key);
 
@@ -332,11 +331,6 @@ uint32_t UniqueJSONStrings::GetOrAddIndex(const char* aStr)
   return index;
 }
 
-bool UniqueStacks::FrameKey::operator<(const FrameKey& aOther) const
-{
- return Hash() < aOther.Hash();
-}
-
 bool UniqueStacks::FrameKey::operator==(const FrameKey& aOther) const
 {
   return mLocation == aOther.mLocation &&
@@ -344,11 +338,6 @@ bool UniqueStacks::FrameKey::operator==(const FrameKey& aOther) const
          mCategory == aOther.mCategory &&
          mJITAddress == aOther.mJITAddress &&
          mJITDepth == aOther.mJITDepth;
-}
-
-bool UniqueStacks::StackKey::operator<(const StackKey& aOther) const
-{
- return Hash() < aOther.Hash();
 }
 
 bool UniqueStacks::StackKey::operator==(const StackKey& aOther) const
@@ -368,9 +357,7 @@ void UniqueStacks::Stack::AppendFrame(const OnStackFrameKey& aFrame)
   // Compute the prefix hash and index before mutating mStack.
   uint32_t prefixHash = mStack.Hash();
   uint32_t prefix = mUniqueStacks.GetOrAddStackIndex(mStack);
-  mStack.mPrefixHash = Some(prefixHash);
-  mStack.mPrefix = Some(prefix);
-  mStack.mFrame = mUniqueStacks.GetOrAddFrameIndex(aFrame);
+  mStack.UpdateHash(prefixHash, prefix, mUniqueStacks.GetOrAddFrameIndex(aFrame));
 }
 
 uint32_t UniqueStacks::Stack::GetOrAddIndex() const
@@ -420,12 +407,7 @@ UniqueStacks::UniqueStacks(JSRuntime* aRuntime)
   mStackTableWriter.StartBareList();
 }
 
-UniqueStacks::~UniqueStacks()
-{
-  mFrameTableWriter.EndBareList();
-  mStackTableWriter.EndBareList();
-}
-
+#ifdef SPS_STANDALONE
 uint32_t UniqueStacks::GetOrAddStackIndex(const StackKey& aStack)
 {
   uint32_t index;
@@ -440,7 +422,23 @@ uint32_t UniqueStacks::GetOrAddStackIndex(const StackKey& aStack)
   StreamStack(aStack);
   return index;
 }
+#else
+uint32_t UniqueStacks::GetOrAddStackIndex(const StackKey& aStack)
+{
+  uint32_t index;
+  if (mStackToIndexMap.Get(aStack, &index)) {
+    MOZ_ASSERT(index < mStackToIndexMap.Count());
+    return index;
+  }
 
+  index = mStackToIndexMap.Count();
+  mStackToIndexMap.Put(aStack, index);
+  StreamStack(aStack);
+  return index;
+}
+#endif
+
+#ifdef SPS_STANDALONE
 uint32_t UniqueStacks::GetOrAddFrameIndex(const OnStackFrameKey& aFrame)
 {
   uint32_t index;
@@ -450,19 +448,6 @@ uint32_t UniqueStacks::GetOrAddFrameIndex(const OnStackFrameKey& aFrame)
     return it->second;
   }
 
-#ifndef SPS_STANDALONE
-  // If aFrame isn't canonical, forward it to the canonical frame's index.
-  if (aFrame.mJITFrameHandle) {
-    void* canonicalAddr = aFrame.mJITFrameHandle->canonicalAddress();
-    if (canonicalAddr != *aFrame.mJITAddress) {
-      OnStackFrameKey canonicalKey(canonicalAddr, *aFrame.mJITDepth, *aFrame.mJITFrameHandle);
-      uint32_t canonicalIndex = GetOrAddFrameIndex(canonicalKey);
-      mFrameToIndexMap[aFrame] = canonicalIndex;
-      return canonicalIndex;
-    }
-  }
-#endif
-
   // A manual count is used instead of mFrameToIndexMap.Count() due to
   // forwarding of canonical JIT frames above.
   index = mFrameCount++;
@@ -470,6 +455,34 @@ uint32_t UniqueStacks::GetOrAddFrameIndex(const OnStackFrameKey& aFrame)
   StreamFrame(aFrame);
   return index;
 }
+#else
+uint32_t UniqueStacks::GetOrAddFrameIndex(const OnStackFrameKey& aFrame)
+{
+  uint32_t index;
+  if (mFrameToIndexMap.Get(aFrame, &index)) {
+    MOZ_ASSERT(index < mFrameCount);
+    return index;
+  }
+
+  // If aFrame isn't canonical, forward it to the canonical frame's index.
+  if (aFrame.mJITFrameHandle) {
+    void* canonicalAddr = aFrame.mJITFrameHandle->canonicalAddress();
+    if (canonicalAddr != *aFrame.mJITAddress) {
+      OnStackFrameKey canonicalKey(canonicalAddr, *aFrame.mJITDepth, *aFrame.mJITFrameHandle);
+      uint32_t canonicalIndex = GetOrAddFrameIndex(canonicalKey);
+      mFrameToIndexMap.Put(aFrame, canonicalIndex);
+      return canonicalIndex;
+    }
+  }
+
+  // A manual count is used instead of mFrameToIndexMap.Count() due to
+  // forwarding of canonical JIT frames above.
+  index = mFrameCount++;
+  mFrameToIndexMap.Put(aFrame, index);
+  StreamFrame(aFrame);
+  return index;
+}
+#endif
 
 uint32_t UniqueStacks::LookupJITFrameDepth(void* aAddr)
 {
@@ -489,14 +502,16 @@ void UniqueStacks::AddJITFrameDepth(void* aAddr, unsigned depth)
   mJITFrameDepthMap[aAddr] = depth;
 }
 
-void UniqueStacks::SpliceFrameTableElements(SpliceableJSONWriter& aWriter) const
+void UniqueStacks::SpliceFrameTableElements(SpliceableJSONWriter& aWriter)
 {
-  aWriter.Splice(mFrameTableWriter.WriteFunc());
+  mFrameTableWriter.EndBareList();
+  aWriter.TakeAndSplice(mFrameTableWriter.WriteFunc());
 }
 
-void UniqueStacks::SpliceStackTableElements(SpliceableJSONWriter& aWriter) const
+void UniqueStacks::SpliceStackTableElements(SpliceableJSONWriter& aWriter)
 {
-  aWriter.Splice(mStackTableWriter.WriteFunc());
+  mStackTableWriter.EndBareList();
+  aWriter.TakeAndSplice(mStackTableWriter.WriteFunc());
 }
 
 void UniqueStacks::StreamStack(const StackKey& aStack)
@@ -785,7 +800,6 @@ void ProfileBuffer::StreamSamplesToJSON(SpliceableJSONWriter& aWriter, int aThre
                 stack.AppendFrame(UniqueStacks::OnStackFrameKey(tagBuff.get()));
               }
             } else if (frame.mTagName == 'c') {
-              tagStringData = "test";
               UniqueStacks::OnStackFrameKey frameKey(tagStringData);
               readAheadPos = (framePos + incBy) % mEntrySize;
               if (readAheadPos != mWritePos &&
@@ -936,6 +950,7 @@ ThreadProfile::ThreadProfile(ThreadInfo* aInfo, ProfileBuffer* aBuffer)
 
 ThreadProfile::~ThreadProfile()
 {
+  delete mMutex;
   MOZ_COUNT_DTOR(ThreadProfile);
 }
 
