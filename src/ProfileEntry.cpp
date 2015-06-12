@@ -17,6 +17,8 @@
 #include "js/TrackedOptimizationInfo.h"
 #endif
 
+#include "mozilla/StackWalk.h"
+
 // JSON
 #include "ProfileJSONWriter.h"
 
